@@ -131,6 +131,7 @@ local function BurnCar(veh, isRear)
         SetVehicleDoorOpen(veh, 4, false, true)
     end
 
+    z.LoadAnim("mini@repair")
     z.PlayAnim(ply, "mini@repair", "fixing_a_player", 8.0, -8.0, -1, 15, 1.0, 0, 0, 0)
     FreezeEntityPosition(ply, true)
     Wait(15000)
