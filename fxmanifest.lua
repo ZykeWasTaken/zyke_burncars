@@ -1,6 +1,6 @@
 fx_version "cerulean"
 game "gta5"
-author "Zyke#0001 / realzyke"
+author "discord.gg/zykeresources"
 lua54 "yes"
 version "1.0.0"
 
