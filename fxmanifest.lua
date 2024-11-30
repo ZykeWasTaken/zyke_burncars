@@ -4,19 +4,14 @@ author "discord.gg/zykeresources"
 lua54 "yes"
 version "1.0.0"
 
-shared_scripts {
-    "shared/config.lua"
+shared_script {
+    "@zyke_lib/imports.lua",
+    "@ox_lib/init.lua", -- Progressbar
+    "config.lua"
 }
 
-server_scripts {
-    "server/webhooks.lua",
-    "server/main.lua",
-}
+server_script "server.lua"
+client_script "client.lua"
+file "locales/*.lua"
 
-client_scripts {
-    "client/main.lua",
-}
-
-dependencies {
-    "zyke_lib",
-}
+dependency "zyke_lib"

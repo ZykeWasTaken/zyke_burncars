@@ -1,10 +1,3 @@
-z = exports["zyke_lib"]:Fetch()
-
--- This is just to fetch the zyke_gangs functionalities, will only fetch if you have this setting enabled
-if (Config.Settings.zykeGangs.enabled) then
-    GangFuncs = exports["zyke_gangs"]:Fetch()
-end
-
 local timers = {} -- Hoisting
 local closeVehicles = {}
 local closestVehicle = nil
@@ -39,24 +32,6 @@ end
 
 -- Basically part of "MeetsRequirement", but is separate as "tamper" should not even be visible if these requirements are not met
 local function ShouldDisplayTampering()
-    local plyPos = GetEntityCoords(PlayerPedId())
-
-    -- NOTE! That you can not use zyke_gangs functionalities if you do not have the script installed
-    local zykeGangSettings = Config.Settings.zykeGangs
-    if (zykeGangSettings.enabled == true) then -- Make sure you want to use zyke_gangs functionalities
-        if (zykeGangSettings.hasToBeInGang) then
-            local playerGang = GangFuncs.GetPlayerGang()
-
-            if (not playerGang) then return false end -- Make sure the player is in a gang
-        end
-
-        if (zykeGangSettings.hasToBeInGrid) then
-            local grid = GangFuncs.GetGridData(plyPos)
-
-            if (grid.id == "empty") then return false end -- Make sure the player is in a marked grid
-        end
-    end
-
     return true
 end
 
@@ -66,14 +41,14 @@ local function MeetsRequirements(veh)
 
     if (settings.emptyVehicle) then
         if ((GetVehicleNumberOfPassengers(veh) > 0) or (not IsVehicleSeatFree(veh, -1))) then
-            z.Notify(Config.Strings.emptyVehicleFailed.msg, Config.Strings.emptyVehicleFailed.type)
+            Z.notify("emptyVehicleFailed")
             return false
         end
     end
 
     if (settings.vehicleOff) then
         if (GetIsVehicleEngineRunning(veh)) then
-            z.Notify(Config.Strings.vehicleOffFailed.msg, Config.Strings.vehicleOffFailed.type)
+            Z.notify("vehicleOffFailed")
             return false
         end
     end
@@ -82,9 +57,12 @@ local function MeetsRequirements(veh)
 end
 
 local function IsVehicleRearEngine(veh)
-    return Config.RearEngines[GetEntityModel(veh)]
+    return Config.RearEngines[GetEntityModel(veh)] ~= nil
 end
 
+---@param veh number
+---@param isRear? boolean
+---@return boolean
 local function BurnCar(veh, isRear)
     local ply = PlayerPedId()
     local plyPos = GetEntityCoords(ply)
@@ -97,46 +75,35 @@ local function BurnCar(veh, isRear)
 
     if (not meetsRequirements) then return false end
 
-    local p = promise.new()
-    z.Callback("zyke_burncars:ValidateRequest", function(res)
-        p:resolve(res)
-    end, {
-        netId = netId,
-    })
+    local response = Z.callback.await("zyke_burncars:ValidateRequest", netId)
+    if (response == false) then
+        local _, missingStr = Z.getMissingItems(Config.Settings.itemsNeeded)
+        Z.notify("missingItem", {missingStr})
 
-    local response = Citizen.Await(p)
-    if (not response) then return false end
-    if (response.state == false) then
-        local str = Config.Strings[response.reason].msg
-
-        if (response.reason == "missingItem") then
-            local missingItems = ""
-            for _, item in ipairs(Config.Settings.itemsNeeded) do
-                local itemLabel = z.GetItem(item.name)?.label or item.name
-                missingItems = missingItems .. itemLabel .. " (" .. item.amount .. "), "
-            end
-
-            str = str:format(missingItems:sub(1, -3))
-        end
-
-        z.Notify(str, Config.Strings[response.reason].type)
         return false
     end
 
     CreateThread(function()
-        z.ProgressBar("tamperingWithCar", Config.Strings.tamperingWithCar, 15000, nil, false, {}, nil, nil, nil, nil, nil)
+        Z.progressBar.start({
+            name = "tamperingWithCar",
+            label = T("tamperingWithCar"),
+            duration = 15000,
+            canCancel = false
+        })
     end)
 
     if (not isRear) then
         SetVehicleDoorOpen(veh, 4, false, true)
     end
 
-    z.LoadAnim("mini@repair")
-    z.PlayAnim(ply, "mini@repair", "fixing_a_player", 8.0, -8.0, -1, 15, 1.0, 0, 0, 0)
+    local dict, anim = "mini@repair", "fixing_a_player"
+    if (not Z.loadDict(dict)) then return false end
+
+    TaskPlayAnim(ply, "mini@repair", "fixing_a_player", 8.0, -8.0, -1, 15, 1.0, 0, 0, 0)
     FreezeEntityPosition(ply, true)
     Wait(15000)
 
-    z.Notify(Config.Strings.tamperedwithVehicle.msg, Config.Strings.tamperedwithVehicle.type)
+    Z.notify("tamperedwithVehicle")
     ClearPedTasks(ply)
     FreezeEntityPosition(ply, false)
     SetVehicleEngineHealth(veh, 0.0)
@@ -162,6 +129,8 @@ local function BurnCar(veh, isRear)
         Wait(1000)
         SetEntityInvincible(veh, false)
     end)
+
+    return true
 end
 
 function HashTable(tbl)
@@ -229,6 +198,8 @@ CreateThread(function()
     Config.RearEngines = HashTable(Config.RearEngines)
     Config.BlacklistedVehicles = HashTable(Config.BlacklistedVehicles)
 
+    local tamperText = T("tamper")
+
     while true do
         local ply = PlayerPedId()
         local plyCoords = GetEntityCoords(ply)
@@ -246,7 +217,7 @@ CreateThread(function()
 
                 if ((dst < 1) and (GetVehicleEngineHealth(closestVehicle) > 0)) then
                     sleep = 3
-                    z.Draw3DText(tamperLocation, Config.Strings.tamper, 0.3)
+                    Z.draw3dText(tamperLocation, tamperText, 0.3)
 
                     if (IsControlJustReleased(0, 38)) then
                         BurnCar(closestVehicle, isRear)
@@ -260,15 +231,3 @@ CreateThread(function()
         Wait(sleep)
     end
 end)
-
--- Don't touch, this is used to fetch a valid token to authorize requests sent to zyke_gangs' server side
-if (Config.Settings.zykeGangs.enabled) then
-    function GetToken()
-        local p = promise.new()
-        z.Callback("zyke_gangs:GetToken", function(res)
-            p:resolve(res)
-        end)
-
-        return Citizen.Await(p)
-    end
-end

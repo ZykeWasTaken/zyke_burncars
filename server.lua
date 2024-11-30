@@ -1,9 +1,3 @@
-z = exports["zyke_lib"]:Fetch()
-
-if (Config.Settings.zykeGangs.enabled == true) then
-    GangFuncs = exports["zyke_gangs"]:Fetch()
-end
-
 -- Caching
 local reservedVehicleNetIds = {} -- When starting to burn a vehicle, the entity's netId will be reserved in here
 local onCooldown = {} -- If you repair your vehicle almost right after burning it, you will have a cooldown before you can get a reward (Note that putting your car in a garage and taking it out will give the vehicle a new entityId, meaning this cooldown will not work)
@@ -50,40 +44,12 @@ RegisterNetEvent("zyke_burncars:Reward", function(pos, netId)
     -- Below here you can add any reward you want, I will perform zyke_gang's objective progression and loyalty removal from the gang that owns the grid
 
     onCooldown[veh] = os.time() + Config.Settings.cooldown -- Add the vehicle to the cooldown list so that you can't spam rewards
-    -- Remove loyalty from the gang that owns the grid
-    if (Config.Settings.zykeGangs.enabled == true) then
-        local gridOwner, grid = GangFuncs.GetGangForGrid(pos)
-        if (gridOwner) then
-            gridOwner.Functions.RemoveGridLoyalty({
-                id = grid.id,
-                handler = source,
-                amount = "burnCar", -- Passing in the name of the loyalty removal, and zyke_gangs will fetch the amount in it's config
-                details = {
-                    reason = "burnCar",
-                }
-            })
-        end
-
-        -- Add towards objective progression
-        local playerGang = GangFuncs.GetPlayerGang(source)
-        if (playerGang) then
-            exports["zyke_gangs"]:AddToObjective({
-                name = "burnCars",
-                identifier = source,
-                amount = 1,
-            })
-        end
-    end
 
     -- Logging using zyke_lib, not really needed, but if you want full transparency, you can use it
-    z.Log({
-        webhook = Webhooks["BurnCar"],
-        scriptName = GetCurrentResourceName(),
-        identifier = z.GetIdentifier(source),
+    Z.log({
+        action = "BurnCar",
         handler = source,
         message = "Player burned a car",
-        action = "BurnCar",
-        logsEnabled = true,
         rawData = {
             pos = pos,
             netId = netId,
@@ -92,25 +58,25 @@ RegisterNetEvent("zyke_burncars:Reward", function(pos, netId)
     })
 end)
 
-z.CreateCallback("zyke_burncars:ValidateRequest", function(source, cb, data)
-    local isReserved = reservedVehicleNetIds[data.netId]
-    if (isReserved) then return cb({state = false, reason = "alreadyReserved"}) end
+Z.callback.register("zyke_burncars:ValidateRequest", function(source, netId)
+    local isReserved = reservedVehicleNetIds[netId]
+    if (isReserved) then return false, "alreadyReserved" end
 
-    reservedVehicleNetIds[data.netId] = true
+    reservedVehicleNetIds[netId] = true
 
     if ((Config.Settings.itemsNeeded) and (#Config.Settings.itemsNeeded > 0)) then
-        local player = z.GetPlayer(source)
-        local hasItem = z.HasItem(player, Config.Settings.itemsNeeded)
+        local player = Z.getPlayerData(source)
+        local hasItem = Z.hasItem(player, Config.Settings.itemsNeeded)
 
         if (not hasItem) then
-            reservedVehicleNetIds[data.netId] = nil
+            reservedVehicleNetIds[netId] = nil
 
-            return cb({state = false, reason = "missingItem"})
+            return false, "missingItem"
         end
 
         for _, itemSettings in pairs(Config.Settings.itemsNeeded) do
             if (itemSettings.remove == true) then
-                z.RemoveItem(player, itemSettings)
+                Z.removeItem(player, itemSettings.name, itemSettings.amount)
             end
         end
     end
@@ -118,8 +84,8 @@ z.CreateCallback("zyke_burncars:ValidateRequest", function(source, cb, data)
     -- In case anything happens, we will remove the netId from the reserved list after a while
     CreateThread(function()
         Wait(60000)
-        reservedVehicleNetIds[data.netId] = nil
+        reservedVehicleNetIds[netId] = nil
     end)
 
-    return cb({state = true})
+    return true
 end)

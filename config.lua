@@ -1,13 +1,6 @@
 Config = Config or {}
 
 Config.Settings = {
-    zykeGangs = {
-        -- When using zyke_gangs (A script that is not yet released), this configuration will allow you to handle grid loyalty upon stabbing wheels, as well as requirements such as being inside someone's grid to stab
-        -- Note that the option to tamper with the vehicle will not appear unless the requirements below are met
-        enabled = false,
-        hasToBeInGang = true, -- Has to be in a gang to tamper with engines
-        hasToBeInGrid = true, -- Has to be inside of a gang owned grid (gang territory) to tamper with engines
-    },
     requirements = {
         -- "Tamper" will be visible even if these are not met, you'll just get a notification if you fail to meet these requirements
         emptyVehicle = true, -- Vehicle has to be empty in order to start the fire
@@ -87,18 +80,4 @@ Config.RearEngines = {
     "surfer2",
     "comet3",
     "xa21"
-}
-
-Config.Strings = {
-    -- Notifications
-    ["emptyVehicleFailed"] = {msg = "You'll get caught if you do this, make sure to only tamper with unmanned vehicles.", type = "error"}, -- Config.Settings.requirements
-    ["vehicleOffFailed"] = {msg = "The vehicle has to be off, otherwise you'll burn yourself.", type = "error"}, -- Config.Settings.requirements
-    ["vehicleIsMoving"] = {msg = "You can't do this while the vehicle is moving, you need to work undisturbed to avoid accidents.", type = "error"}, -- Universal requirement
-    ["alreadyReserved"] = {msg = "Someone is already tampering with this vehicle.", type = "error"},
-    ["tamperedwithVehicle"] = {msg = "You tampered with the engine, keep your distance.", type = "success"},
-    ["missingItem"] = {msg = "You're missing items, you need: %s.", type = "error"},
-
-    -- Misc
-    ["tamper"] = "~g~[E] ~w~Tamper",
-    ["tamperingWithCar"] = "Tampering with the engine",
 }
