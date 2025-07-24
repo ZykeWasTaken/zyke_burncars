@@ -2,7 +2,7 @@ fx_version "cerulean"
 game "gta5"
 author "discord.gg/zykeresources"
 lua54 "yes"
-version "1.0.1"
+version "1.0.2"
 
 shared_script "@zyke_lib/imports.lua"
 
